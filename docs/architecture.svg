@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 460" width="760" height="460" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#8b93a7"/>
+    </marker>
+    <style>
+      .box  { fill: #6366f1; fill-opacity: 0.12; stroke: #6366f1; stroke-width: 1.5; rx: 10; }
+      .box2 { fill: #10b981; fill-opacity: 0.12; stroke: #10b981; stroke-width: 1.5; rx: 10; }
+      .box3 { fill: #f59e0b; fill-opacity: 0.12; stroke: #f59e0b; stroke-width: 1.5; rx: 10; }
+      .t    { fill: #8b93a7; font-size: 12px; }
+      .h    { fill: #6b7280; font-size: 14px; font-weight: 600; }
+      .hi   { fill: #6366f1; font-size: 14px; font-weight: 600; }
+      .h2   { fill: #10b981; font-size: 14px; font-weight: 600; }
+      .h3   { fill: #f59e0b; font-size: 14px; font-weight: 600; }
+      .lbl  { fill: #8b93a7; font-size: 11px; font-style: italic; }
+      .line { stroke: #8b93a7; stroke-width: 1.5; fill: none; marker-end: url(#arrow); }
+      .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; fill: #8b93a7; }
+    </style>
+  </defs>
+
+  <!-- Claude Code -->
+  <rect class="box" x="240" y="16" width="280" height="52"/>
+  <text class="hi" x="380" y="40" text-anchor="middle">Claude Code</text>
+  <text class="t"  x="380" y="57" text-anchor="middle">asks about the board in natural language</text>
+
+  <path class="line" d="M 380 68 L 380 104"/>
+  <text class="lbl" x="392" y="90">stdio (MCP)</text>
+
+  <!-- MCP server -->
+  <rect class="box2" x="140" y="104" width="480" height="128"/>
+  <text class="h2" x="380" y="126" text-anchor="middle">MCP server  ·  this repo</text>
+
+  <rect x="160" y="138" width="140" height="34" rx="7" fill="#10b981" fill-opacity="0.10" stroke="#10b981" stroke-opacity="0.5"/>
+  <text class="t" x="230" y="159" text-anchor="middle">7 read-only tools</text>
+
+  <rect x="310" y="138" width="140" height="34" rx="7" fill="#10b981" fill-opacity="0.10" stroke="#10b981" stroke-opacity="0.5"/>
+  <text class="t" x="380" y="159" text-anchor="middle">model/ · netlist</text>
+
+  <rect x="460" y="138" width="140" height="34" rx="7" fill="#10b981" fill-opacity="0.10" stroke="#10b981" stroke-opacity="0.5"/>
+  <text class="t" x="530" y="159" text-anchor="middle">size guards</text>
+
+  <text class="t" x="380" y="196" text-anchor="middle">all summarising happens here — no tool returns raw document JSON</text>
+  <text class="mono" x="380" y="216" text-anchor="middle">owns the WebSocket server</text>
+
+  <path class="line" d="M 380 232 L 380 272"/>
+  <text class="lbl" x="392" y="250">ws://127.0.0.1:3579</text>
+  <text class="mono" x="576" y="254" text-anchor="end">the only port the CSP allows</text>
+
+  <!-- bridge -->
+  <rect class="box3" x="200" y="272" width="360" height="60"/>
+  <text class="h3" x="380" y="294" text-anchor="middle">probe/std-bridge.js</text>
+  <text class="t"  x="380" y="313" text-anchor="middle">thin RPC dispatcher — WebSocket client, reconnects on drop</text>
+
+  <path class="line" d="M 380 332 L 380 368"/>
+  <text class="lbl" x="392" y="354">api('getSource', …)</text>
+
+  <!-- editor -->
+  <rect class="box" x="200" y="368" width="360" height="60"/>
+  <text class="hi" x="380" y="390" text-anchor="middle">EasyEDA Standard</text>
+  <text class="t"  x="380" y="409" text-anchor="middle">desktop client or browser — your live schematic</text>
+
+  <!-- side note -->
+  <text class="mono" x="16" y="300">editor is the</text>
+  <text class="mono" x="16" y="316">flaky end, so</text>
+  <text class="mono" x="16" y="332">it reconnects</text>
+
+  <text class="mono" x="744" y="392" text-anchor="end">read-only:</text>
+  <text class="mono" x="744" y="408" text-anchor="end">never written to</text>
+</svg>

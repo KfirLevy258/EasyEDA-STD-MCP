@@ -1,0 +1,12 @@
+node_modules/
+dist/
+*.log
+.DS_Store
+
+# Private board captures — real designs, never commit these.
+# The synthetic fixture (synthetic-sch.json) is the public one.
+test/fixtures/sch-*.json
+!test/fixtures/synthetic-sch.json
+
+# Tests bound to a private board fixture — kept locally, not published.
+test/private/

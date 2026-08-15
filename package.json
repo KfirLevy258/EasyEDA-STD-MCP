@@ -1,0 +1,54 @@
+{
+  "name": "easyeda-std-mcp",
+  "version": "0.1.0",
+  "private": true,
+  "description": "MCP bridge to a live EasyEDA Standard editor session (read-only, Phase 1)",
+  "type": "module",
+  "bin": {
+    "easyeda-std-mcp": "dist/server/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "node --test dist/test/*.test.js",
+    "start": "node dist/server/index.js",
+    "prepare": "npm run build",
+    "test:private": "node --test dist/test/private/*.test.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "ws": "^8.21.3",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@types/node": "^26.2.0",
+    "@types/ws": "^8.18.1",
+    "typescript": "^7.0.2"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/KfirLevy258/EasyEDA-STD-MCP.git"
+  },
+  "homepage": "https://github.com/KfirLevy258/EasyEDA-STD-MCP#readme",
+  "bugs": {
+    "url": "https://github.com/KfirLevy258/EasyEDA-STD-MCP/issues"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "easyeda",
+    "easyeda-standard",
+    "pcb",
+    "schematic",
+    "eda",
+    "claude",
+    "lcsc",
+    "jlcpcb",
+    "netlist",
+    "bom"
+  ]
+}
