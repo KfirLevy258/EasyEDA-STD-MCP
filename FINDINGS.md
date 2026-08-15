@@ -319,3 +319,60 @@ The fixture was captured without ever passing through an agent context: with the
 attached, `window.__edaBridge.ws.send('PROBE_REPORT ' + JSON.stringify(src))` streams it
 from the editor straight to a file on the server side. Use this pattern for all future
 captures.
+
+## 11. Writes — `createNew: true` does NOT sandbox (Phase 2)
+
+The handoff (§3) documents `api('applySource', {source, createNew: true})` as opening
+the result in a **new editor tab**, and calls it "safer for testing". Verified against
+the live desktop client: **it is not true.** `createNew: true` overwrites the currently
+open document. No new tab is created and the URL hash never changes.
+
+This was found the hard way, by running a supposedly side-effect-free round-trip test on
+a real board and discovering afterwards that the board had been rewritten.
+
+**There is no dry-run and no sandbox for writes.** Any write experiment risks a live
+document. Develop against a board you are willing to lose.
+
+### The round-trip IS content-lossless
+
+`getSource` → `applySource` with no modifications preserves everything that matters:
+
+| | Before | After |
+|---|---|---|
+| Components | 140 | 140 |
+| Pins / orphan pins | 442 / 0 | 442 / 0 |
+| Named nets (GND/VDD/3V3/…) | 141/29/6/7/3/2 | identical |
+
+What *does* change is serialization: `gId` is hoisted to the front of each `head`, and
+numeric coordinates become strings (`"x": 0` → `"x": "0"`). Byte length drops (908,828 →
+886,096) with no loss of content — EasyEDA re-normalising its own format on import.
+
+Consequences:
+- **Never diff documents by byte length or JSON string equality.** Compare structure.
+- A second `getSource` immediately after is byte-stable, so `getSource` itself is
+  deterministic — the difference really is the write, not read noise.
+
+### `applySource` reports nothing
+
+It returns `undefined` on success — and, per §3, also returns `undefined` for an unknown
+method name. **Its return value carries no information.** Every write must be verified by
+reading the document back. This is not defensive style; it is the only available signal.
+
+### The write architecture that follows
+
+Because there is no sandbox and no return value, every write goes through one path:
+
+```
+snapshot to disk  ->  edit in memory  ->  integrity check  ->  write
+                  ->  read back       ->  verify           ->  roll back on mismatch
+```
+
+- `applySource` has exactly one call site (`Bridge.applySource`), enforced by a test.
+- Edits **preview by default**; writing requires an explicit `apply: true`.
+- An edit with neither `designators` nor `filter` is refused rather than applied to
+  every component.
+- Integrity comparison covers component/pin/wire/vertex/net counts and every named net's
+  pin count, so a field edit that silently altered topology is caught and rolled back.
+
+`createShape` and `updateShape` exist in the method table but remain unused — they would
+need the same gating, and a test asserts they stay unused until that is built.

@@ -10,3 +10,6 @@ test/fixtures/sch-*.json
 
 # Tests bound to a private board fixture — kept locally, not published.
 test/private/
+
+# Document snapshots taken before writes — local safety net, not source.
+backups/

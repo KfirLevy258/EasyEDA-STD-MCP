@@ -8,12 +8,13 @@
     "easyeda-std-mcp": "dist/server/index.js"
   },
   "scripts": {
-    "build": "tsc",
+    "build": "rm -rf dist && tsc",
     "dev": "tsc --watch",
     "test": "node --test dist/test/*.test.js",
     "start": "node dist/server/index.js",
     "prepare": "npm run build",
-    "test:private": "node --test dist/test/private/*.test.js"
+    "test:private": "node --test dist/test/private/*.test.js",
+    "clean": "rm -rf dist"
   },
   "engines": {
     "node": ">=20"

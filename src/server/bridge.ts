@@ -83,6 +83,11 @@ export class Bridge {
 
       const wss = new WebSocketServer({ server: http });
       wss.on('connection', (ws) => this.onConnection(ws));
+      // The WebSocketServer re-emits the HTTP server's listen errors. Without a
+      // handler here an EADDRINUSE becomes an unhandled 'error' event and kills the
+      // process — instead of the doctor reporting a busy port, which is the whole
+      // point of tracking listenError.
+      wss.on('error', () => void 0);
 
       http.listen(BRIDGE_PORT, '127.0.0.1', () => {
         this.http = http;
@@ -160,6 +165,23 @@ export class Bridge {
     const reply = await this.call('getSource', { type: 'json' });
     if (!reply.ok) throw new Error(reply.error ?? 'getSource failed');
     return reply.result ?? null;
+  }
+
+  /**
+   * Write a document back to the LIVE editor.
+   *
+   * There is no safe mode. `createNew: true` is documented as opening the result in
+   * a new tab; against the real editor it does not — it overwrites the open document
+   * (FINDINGS.md §11). So this always passes `createNew: false` and states plainly
+   * what it is doing, rather than implying a sandbox that does not exist.
+   *
+   * Callers must snapshot first and verify afterwards. See writeVerified().
+   */
+  async applySource(doc: unknown): Promise<void> {
+    const reply = await this.call('applySource', { source: doc as Record<string, unknown>, createNew: false }, 60_000);
+    // applySource returns undefined on success AND for an unknown method name, so
+    // its return value proves nothing. Verification is the caller's job.
+    if (!reply.ok) throw new Error(reply.error ?? 'applySource failed');
   }
 
   async stop(): Promise<void> {

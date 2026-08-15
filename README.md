@@ -8,8 +8,8 @@
 [![EasyEDA](https://img.shields.io/badge/EasyEDA-Standard-10b981)](https://easyeda.com)
 [![Node](https://img.shields.io/badge/node-%E2%89%A520-339933?logo=node.js&logoColor=white)](https://nodejs.org)
 [![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178c6?logo=typescript&logoColor=white)](https://www.typescriptlang.org)
-[![Tests](https://img.shields.io/badge/tests-20%20passing-brightgreen)](#testing)
-[![Read only](https://img.shields.io/badge/Phase%201-read--only-f59e0b)](#read-only-by-design)
+[![Tests](https://img.shields.io/badge/tests-38%20passing-brightgreen)](#testing)
+[![Writes](https://img.shields.io/badge/writes-guarded-f59e0b)](#writes-are-guarded)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
 </div>
@@ -24,6 +24,8 @@
 
 Std is in vendor-declared maintenance mode, so third-party tooling migrated to Pro and no MCP
 server existed for Std. This is one, built from scratch by reverse-engineering the live editor.
+
+**Ten tools:** seven read-only, three for guarded writes. Schematics only.
 
 ## What it does
 
@@ -128,6 +130,14 @@ excluded — and *reported*, so its absence is visible rather than silent.
 | `easyeda_get_component` | One part in full, including each pin's net |
 | `easyeda_get_bom` | Grouped BOM with quantities and designators |
 
+### Write tools
+
+| Tool | What it does |
+|---|---|
+| `easyeda_edit_components` | Set value / designator / footprint / LCSC / manufacturer on one or many parts. **Previews by default.** |
+| `easyeda_list_backups` | Restore points, newest first |
+| `easyeda_restore_backup` | Roll the live document back to a restore point |
+
 ## Install
 
 **Requirements:** Node ≥ 20, and EasyEDA **Standard** (desktop client or browser).
@@ -206,15 +216,51 @@ Any other port is blocked by Chromium **before a packet is sent** — no error e
 complete silence. That silence is the signature. The port is not configurable.
 </details>
 
-## Read-only by design
+## Writes are guarded
 
-Phase 1 never modifies your boards. The bridge only ever calls `getSource`; `applySource`,
-`createShape` and `updateShape` are not wired to any tool — and a test greps the source tree to
-keep it that way:
+Writing is real, and there is **no sandbox**. `applySource` overwrites whatever document
+is open. `createNew: true` is documented as opening a new tab — it does not (see
+[FINDINGS.md §11](FINDINGS.md)); it overwrites in place. And it returns `undefined`
+whether it succeeded or was never dispatched, so its return value proves nothing.
+
+Everything about the write path follows from those three facts:
 
 ```
-✔ SAFETY: no tool or server code can mutate the document
+snapshot to disk → edit in memory → integrity check → write
+                 → read back      → verify          → roll back on mismatch
 ```
+
+**Preview is the default.** An edit shows you exactly what would change and writes nothing:
+
+```
+Designator  Field         From         To
+----------  ------------  -----------  -------
+U2          manufacturer  GenericSemi  NewCorp
+
+PREVIEW ONLY — 1 change(s) not yet written.
+Re-run with apply: true to write them to the editor.
+```
+
+With `apply: true`, a restore point is written **before** the change, and the result is
+read back and structurally verified:
+
+```
+Restore point saved: 2026-08-15T20-55-42-503Z__before-manufacturer-1
+
+Applied 1 of 1 change(s). Structure verified unchanged:
+  components 18, wires 18, nets 12, orphan pins 0
+```
+
+If verification finds the topology moved — a component gone, a net's pin count changed,
+two rails merged — the write is **rolled back automatically** and reported.
+
+Other guarantees, each enforced by a test rather than by convention:
+
+- `applySource` has exactly **one call site**, so there is a single place to audit.
+- Read-only tools cannot reach the write path.
+- An edit with neither `designators` nor `filter` is **refused**, not applied to every part.
+- The restore point is saved *before* the write, never after.
+- `createShape` / `updateShape` exist in the API but stay unused until they get the same gating.
 
 ## How it works
 
@@ -276,7 +322,10 @@ stays small and leaks no geometry. Treat a full dump as a bug.
 ## Limitations
 
 - **Schematics only.** PCB documents are detected and declined rather than guessed at.
-- **Phase 1 is read-only.** No DRC, no fabrication export, no supplier API.
+- **Writes cover component fields**, not geometry. Placing, moving and routing would need
+  `createShape`/`updateShape`, which are unimplemented — and because nets are derived from
+  coordinates, moving anything can silently break connectivity.
+- No DRC, no fabrication export, no supplier API.
 - Port 3579 is whitelisted because EasyEDA presumably intends it for its own local helper.
   It isn't ours by right; a collision is possible.
 - `probe/std-bridge.js` includes an `__eval` escape hatch used to reverse-engineer the API.
