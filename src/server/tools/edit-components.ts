@@ -2,7 +2,7 @@ import type { Bridge } from '../bridge.js';
 import type { BackupStore } from '../backup.js';
 import { applyFieldEdits, checkIntegrity, type EditableField, type FieldChange } from '../model/edit.js';
 import { listComponents } from '../model/components.js';
-import { docKind } from '../model/document.js';
+import { docKind, documentId } from '../model/document.js';
 import { renderTable } from './list-components.js';
 import type { StdDocument } from '../model/types.js';
 
@@ -109,6 +109,14 @@ export async function editComponents(
 
   // applySource tells us nothing on return, so read back and check.
   const after = (await bridge.getSource()) as StdDocument | null;
+  if (after && documentId(after) !== documentId(doc)) {
+    lines.push('');
+    lines.push('DOCUMENT CHANGED DURING THE WRITE — the editor switched to a different board');
+    lines.push(`  expected ${documentId(doc)}, now showing ${documentId(after)}`);
+    lines.push(`Do NOT restore blindly. Switch back to the original document, then use`);
+    lines.push(`easyeda_restore_backup with the restore point above.`);
+    return lines.join('\n');
+  }
   if (!after) {
     lines.push('WARNING: could not read the document back after writing. Verify manually.');
     return lines.join('\n');
@@ -189,6 +197,21 @@ export async function restoreBackup(
   }
 
   const current = (await bridge.getSource()) as StdDocument | null;
+
+  // A restore writes a whole document. If the editor is showing a DIFFERENT board than
+  // the snapshot came from, this would overwrite that board wholesale — so refuse.
+  const snapId = documentId(doc);
+  const liveId = documentId(current);
+  if (snapId && liveId && snapId !== liveId) {
+    return (
+      `REFUSING TO RESTORE — wrong document is open.\n\n` +
+      `  snapshot is of document ${snapId}\n` +
+      `  editor currently shows  ${liveId}\n\n` +
+      'Restoring would overwrite the open board with a different one. Switch EasyEDA back ' +
+      'to the document this snapshot came from, then run this again.'
+    );
+  }
+
   if (current) backups.save(current, 'before-restore');
 
   await bridge.applySource(doc);

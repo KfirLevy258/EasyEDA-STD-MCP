@@ -1,6 +1,6 @@
 import type { Bridge } from '../bridge.js';
 import type { BackupStore } from '../backup.js';
-import { docKind } from '../model/document.js';
+import { docKind, documentId } from '../model/document.js';
 import { planConnection, isConnectResult, verifyConnection, findPin } from '../model/wiring.js';
 import { duplicateComponent, isDuplicateFailure, verifyDuplicate } from '../model/duplicate.js';
 import type { StdDocument } from '../model/types.js';
@@ -74,6 +74,14 @@ export async function connectPins(
   }
 
   const after = (await bridge.getSource()) as StdDocument | null;
+  if (after && documentId(after) !== documentId(doc)) {
+    lines.push('');
+    lines.push('DOCUMENT CHANGED DURING THE WRITE — the editor switched to a different board');
+    lines.push(`  expected ${documentId(doc)}, now showing ${documentId(after)}`);
+    lines.push(`Do NOT restore blindly. Switch back to the original document, then use`);
+    lines.push(`easyeda_restore_backup with the restore point above.`);
+    return lines.join('\n');
+  }
   if (!after) {
     lines.push('WARNING: could not read back after writing. Verify manually.');
     return lines.join('\n');
@@ -150,6 +158,14 @@ export async function addComponent(
   }
 
   const after = (await bridge.getSource()) as StdDocument | null;
+  if (after && documentId(after) !== documentId(doc)) {
+    lines.push('');
+    lines.push('DOCUMENT CHANGED DURING THE WRITE — the editor switched to a different board');
+    lines.push(`  expected ${documentId(doc)}, now showing ${documentId(after)}`);
+    lines.push(`Do NOT restore blindly. Switch back to the original document, then use`);
+    lines.push(`easyeda_restore_backup with the restore point above.`);
+    return lines.join('\n');
+  }
   if (!after) {
     lines.push('WARNING: could not read back after writing. Verify manually.');
     return lines.join('\n');
@@ -250,6 +266,14 @@ export async function drawBoxTool(
   }
 
   const after = (await bridge.getSource()) as StdDocument | null;
+  if (after && documentId(after) !== documentId(doc)) {
+    lines.push('');
+    lines.push('DOCUMENT CHANGED DURING THE WRITE — the editor switched to a different board');
+    lines.push(`  expected ${documentId(doc)}, now showing ${documentId(after)}`);
+    lines.push(`Do NOT restore blindly. Switch back to the original document, then use`);
+    lines.push(`easyeda_restore_backup with the restore point above.`);
+    return lines.join('\n');
+  }
   if (!after) {
     lines.push('WARNING: could not read back after writing. Verify manually.');
     return lines.join('\n');
@@ -326,6 +350,14 @@ export async function moveComponentTool(
   }
 
   const after = (await bridge.getSource()) as StdDocument | null;
+  if (after && documentId(after) !== documentId(doc)) {
+    lines.push('');
+    lines.push('DOCUMENT CHANGED DURING THE WRITE — the editor switched to a different board');
+    lines.push(`  expected ${documentId(doc)}, now showing ${documentId(after)}`);
+    lines.push(`Do NOT restore blindly. Switch back to the original document, then use`);
+    lines.push(`easyeda_restore_backup with the restore point above.`);
+    return lines.join('\n');
+  }
   if (!after) {
     lines.push('WARNING: could not read back after writing. Verify manually.');
     return lines.join('\n');

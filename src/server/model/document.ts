@@ -57,3 +57,16 @@ export function documentName(doc: StdDocument): string | undefined {
   const head = doc.head as Record<string, unknown> | undefined;
   return str(head?.['title']) ?? str(head?.['docTitle']);
 }
+
+/**
+ * Identity of the open document. `head.uuid` is stable for a document and differs
+ * between them, so it is what distinguishes "the board I read" from "the board that
+ * happens to be in front now".
+ *
+ * This matters because every write targets whatever document is ACTIVE. If the user
+ * switches tabs between a read and a write, the write lands on the wrong board.
+ */
+export function documentId(doc: StdDocument | null | undefined): string | undefined {
+  if (!doc) return undefined;
+  return str((doc.head as Record<string, unknown> | undefined)?.['uuid']);
+}

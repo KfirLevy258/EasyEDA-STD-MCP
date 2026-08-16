@@ -473,3 +473,39 @@ functional blocks with exactly this rect+annotation pattern — rather than inve
 
 Verified live: a box drawn around three connectors with the label "connectors" left the
 document at 4 components and 48 nets with identical membership.
+
+## 14. Every write targets whatever document is ACTIVE — guard on identity
+
+Found in live use, not by reasoning. A sequence of moves was issued against one board;
+between the first write and the second, the editor's active document changed (a tab
+switch). The later calls landed on a **different board**, where they correctly failed with
+"no component with designator U4" — but only by luck of the designators not existing.
+
+`getSource` and `applySource` have no document parameter. They act on whatever is in front
+of the editor at that instant. Consequences:
+
+- A read-modify-write sequence spanning two tool calls can straddle a document switch.
+- **A restore is the dangerous case**: it writes a whole document, so restoring a snapshot
+  while a different board is open would overwrite that board wholesale — silently, and with
+  a plausible-looking success message.
+
+### The guard
+
+`head.uuid` identifies a document. So:
+
+- **Restore refuses outright** when the snapshot's `uuid` differs from the open document's,
+  naming both ids and telling the user to switch back.
+- **Every write tool re-reads after writing** and compares the id. If the document changed
+  mid-write it reports the mismatch and explicitly says *do not restore blindly*, because
+  the obvious recovery is exactly the thing that would cause damage.
+
+Verified live: with the wrong board open, a restore of a DWM3001C snapshot was refused —
+
+```
+REFUSING TO RESTORE — wrong document is open.
+  snapshot is of document 8f8cc4de8af34de79b31067aaa6e0fd3
+  editor currently shows  f4394d8b78c142899bbc794f59c7c430
+```
+
+This is the sharpest illustration of §11's point: with no sandbox and no useful return
+value, safety has to come from checking what actually happened, every time.
