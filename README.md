@@ -33,6 +33,72 @@ server existed for Std. This is one, built from scratch by reverse-engineering t
   <img src="docs/architecture.svg" alt="Claude Code talks over MCP stdio to this server, which runs a WebSocket server on 127.0.0.1:3579; a small bridge script inside EasyEDA connects to it and calls the editor's api() function" width="100%">
 </div>
 
+## Install
+
+**Requirements:** Node ≥ 20, and EasyEDA **Standard** (desktop client or browser).
+
+```bash
+git clone https://github.com/KfirLevy258/EasyEDA-STD-MCP.git
+cd EasyEDA-STD-MCP
+npm install
+npm run build
+```
+
+Register with Claude Code:
+
+```bash
+claude mcp add easyeda -- node "$(pwd)/dist/src/server/index.js"
+```
+
+### Attach the editor
+
+With a board open in EasyEDA Standard:
+
+**`Advanced` → `Extensions` → `Run Script…` → `Load from js file…` → pick `probe/std-bridge.js` → `Run`**
+
+Then ask Claude to run `easyeda_doctor`. You want:
+
+```
+  [ok]   bridge server listening on 127.0.0.1:3579
+  [ok]   editor attached (protocol easyeda-std-bridge/0.1)
+  [ok]   RPC round-trip works
+  [ok]   document open: schematic, ~412 KB
+
+STATE: connected, document open. Ready.
+```
+
+The bridge lasts until the editor page reloads, and reconnects by itself if the MCP server
+restarts. Re-run the script after reloading EasyEDA.
+
+> [!TIP]
+> **Load it from the file — don't bootstrap with `fetch(...).then(eval)`.** That evaluates in
+> global scope, where the editor's injected `api()` isn't visible. `api` is not on `window`.
+
+## Tools
+
+| Tool | What it gives you |
+|---|---|
+| `easyeda_doctor` | End-to-end diagnosis. **Run this first.** |
+| `easyeda_get_context` | Document type, size, collection counts — cheap orientation |
+| `easyeda_list_components` | Designator, name, footprint, LCSC part, pin count — with filter |
+| `easyeda_list_nets` | Every net with connection counts |
+| `easyeda_trace_net` | Every pin on a net, with the owning component |
+| `easyeda_get_component` | One part in full, including each pin's net |
+| `easyeda_get_bom` | Grouped BOM with quantities and designators |
+
+### Write tools
+
+| Tool | What it does |
+|---|---|
+| `easyeda_edit_components` | Set value / designator / footprint / LCSC / manufacturer on one or many **existing** parts. **Previews by default.** |
+| `easyeda_list_backups` | Restore points, newest first |
+| `easyeda_restore_backup` | Roll the live document back to a restore point |
+
+> [!NOTE]
+> **Writes edit part metadata only.** This cannot add components, draw wires, create nets,
+> or move anything. It changes fields on parts that already exist. See
+> [Limitations](#limitations) for why drawing is a materially harder problem.
+
 ## Demo
 
 Once attached, you just ask. Output below is from the repo's synthetic test board, so you can
@@ -117,67 +183,6 @@ Qty  Name         Footprint               LCSC      Manufacturer    Designators
 Two separate `10kΩ` lines, because R0402 and R0603 are not interchangeable. Grouping by value
 alone would merge parts you cannot substitute. The mounting hole marked `add_into_bom=no` is
 excluded — and *reported*, so its absence is visible rather than silent.
-
-## Tools
-
-| Tool | What it gives you |
-|---|---|
-| `easyeda_doctor` | End-to-end diagnosis. **Run this first.** |
-| `easyeda_get_context` | Document type, size, collection counts — cheap orientation |
-| `easyeda_list_components` | Designator, name, footprint, LCSC part, pin count — with filter |
-| `easyeda_list_nets` | Every net with connection counts |
-| `easyeda_trace_net` | Every pin on a net, with the owning component |
-| `easyeda_get_component` | One part in full, including each pin's net |
-| `easyeda_get_bom` | Grouped BOM with quantities and designators |
-
-### Write tools
-
-| Tool | What it does |
-|---|---|
-| `easyeda_edit_components` | Set value / designator / footprint / LCSC / manufacturer on one or many parts. **Previews by default.** |
-| `easyeda_list_backups` | Restore points, newest first |
-| `easyeda_restore_backup` | Roll the live document back to a restore point |
-
-## Install
-
-**Requirements:** Node ≥ 20, and EasyEDA **Standard** (desktop client or browser).
-
-```bash
-git clone https://github.com/KfirLevy258/EasyEDA-STD-MCP.git
-cd EasyEDA-STD-MCP
-npm install
-npm run build
-```
-
-Register with Claude Code:
-
-```bash
-claude mcp add easyeda -- node "$(pwd)/dist/src/server/index.js"
-```
-
-### Attach the editor
-
-With a board open in EasyEDA Standard:
-
-**`Advanced` → `Extensions` → `Run Script…` → `Load from js file…` → pick `probe/std-bridge.js` → `Run`**
-
-Then ask Claude to run `easyeda_doctor`. You want:
-
-```
-  [ok]   bridge server listening on 127.0.0.1:3579
-  [ok]   editor attached (protocol easyeda-std-bridge/0.1)
-  [ok]   RPC round-trip works
-  [ok]   document open: schematic, ~412 KB
-
-STATE: connected, document open. Ready.
-```
-
-The bridge lasts until the editor page reloads, and reconnects by itself if the MCP server
-restarts. Re-run the script after reloading EasyEDA.
-
-> [!TIP]
-> **Load it from the file — don't bootstrap with `fetch(...).then(eval)`.** That evaluates in
-> global scope, where the editor's injected `api()` isn't visible. `api` is not on `window`.
 
 ## Troubleshooting
 
@@ -322,9 +327,19 @@ stays small and leaks no geometry. Treat a full dump as a bug.
 ## Limitations
 
 - **Schematics only.** PCB documents are detected and declined rather than guessed at.
-- **Writes cover component fields**, not geometry. Placing, moving and routing would need
-  `createShape`/`updateShape`, which are unimplemented — and because nets are derived from
-  coordinates, moving anything can silently break connectivity.
+- **Writes edit fields, not the circuit.** There is no way to add a component, draw a wire,
+  create a net, or move a part. `easyeda_edit_components` changes metadata on existing parts.
+
+  This is a deliberate stopping point, not an oversight. EasyEDA Std stores **no netlist** —
+  connectivity is inferred from coordinates meeting exactly (see [How it works](#how-it-works)).
+  So "connect these two pins" is not a data edit, it is a geometry problem: route a polyline
+  whose vertices land precisely on both pin coordinates, without colliding with other nets,
+  and add junctions where it legitimately crosses. Get a coordinate wrong by a fraction and
+  the wire *looks* connected in the editor while the net silently doesn't form — the exact
+  failure mode this project already has to defend against when reading.
+
+  The building blocks exist (`createShape` / `updateShape` are in the API and unused), and the
+  integrity checker would catch a broken net after the fact. What's missing is routing itself.
 - No DRC, no fabrication export, no supplier API.
 - Port 3579 is whitelisted because EasyEDA presumably intends it for its own local helper.
   It isn't ours by right; a collision is possible.
