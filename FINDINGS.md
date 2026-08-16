@@ -423,3 +423,20 @@ and the symbol renders in two places, or a pin sits away from its body and joins
 net. `offsetPathString` handles absolute `M/L/T/H/V/C/S/Q` and leaves relative commands alone.
 **SVG arcs are refused** — `A` mixes radii and flags in with coordinates, and a wrong guess
 corrupts the symbol silently.
+
+### Verified against a live editor
+
+Run end to end on a real board (4 components, 48 nets), with the board restored afterwards:
+
+| Step | Result |
+|---|---|
+| Place a 14-pin part by duplication | `U5 placed and verified` — 4 components → 5 |
+| Draw a straight wire between two of its pins | `Wire drawn and verified`, new net `N$49` = `U5.1 U5.14` |
+| Preview an L-shaped route to another part | corner at `(710,-685)`; **correctly predicted a 3-pin net** (`U1.40 U4.9 U5.5`), because the target pin was already tied to `U1.40` |
+| Connect two pins already on one net | refused: *already on net N$1* |
+| Connect a pin that does not exist | refused: *pin U5.99 not found* |
+| Restore the pre-test snapshot | back to 4 components / 48 wires / 48 nets, net membership identical |
+
+The L-route case is the one worth noting: the preview surfaced that the connection would
+*extend* an existing net rather than create a fresh two-pin one, **before** anything was
+written. That is the difference between a tool you can trust with geometry and one you cannot.
