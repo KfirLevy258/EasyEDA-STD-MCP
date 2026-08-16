@@ -8,7 +8,7 @@
 [![EasyEDA](https://img.shields.io/badge/EasyEDA-Standard-10b981)](https://easyeda.com)
 [![Node](https://img.shields.io/badge/node-%E2%89%A520-339933?logo=node.js&logoColor=white)](https://nodejs.org)
 [![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178c6?logo=typescript&logoColor=white)](https://www.typescriptlang.org)
-[![Tests](https://img.shields.io/badge/tests-63%20passing-brightgreen)](#testing)
+[![Tests](https://img.shields.io/badge/tests-78%20passing-brightgreen)](#testing)
 [![Writes](https://img.shields.io/badge/writes-guarded-f59e0b)](#writes-are-guarded)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
@@ -25,7 +25,7 @@
 Std is in vendor-declared maintenance mode, so third-party tooling migrated to Pro and no MCP
 server existed for Std. This is one, built from scratch by reverse-engineering the live editor.
 
-**Twelve tools:** seven read-only, five for guarded writes — including drawing wires and placing parts. Schematics only.
+**Fourteen tools:** seven read-only, seven for guarded writes — place and move parts, draw wires, annotate blocks. Schematics only.
 
 ## What it does
 
@@ -93,6 +93,8 @@ restarts. Re-run the script after reloading EasyEDA.
 | `easyeda_edit_components` | Set value / designator / footprint / LCSC / manufacturer on existing parts |
 | `easyeda_connect_pins` | Draw a wire between two pins, creating or extending a net |
 | `easyeda_add_component` | Place a new part by duplicating one already on the sheet |
+| `easyeda_move_component` | Move a part, dragging its attached wires so nets survive |
+| `easyeda_draw_box` | Draw a labelled box around a group of parts — documentation only |
 | `easyeda_list_backups` | Restore points, newest first |
 | `easyeda_restore_backup` | Roll the live document back to a restore point |
 
@@ -334,7 +336,13 @@ stays small and leaks no geometry. Treat a full dump as a bug.
   coordinate silently merges two nets while looking correct on screen.
 - **New parts are copies.** `easyeda_add_component` duplicates a part already on the sheet.
   Placing from the LCSC library would need `createShape` with a `shortUrl`, which is untested.
-- **Nothing moves.** There is no way to reposition an existing part.
+- **Moving does not re-route.** `easyeda_move_component` drags attached wire endpoints so
+  nets survive, but the wires end up diagonal rather than neatly re-routed. Electrically
+  correct, cosmetically plain.
+- **Only components move.** There is no way to move a bare wire or a whole net.
+- **No symbol creation.** `easyeda_draw_box` draws documentation graphics, not component
+  symbols. A hand-built symbol would have no footprint and no LCSC part, so it would not
+  convert to PCB or appear usefully in a BOM — EasyEDA's own symbol editor is the right tool.
 - No DRC, no fabrication export, no supplier API.
 - Port 3579 is whitelisted because EasyEDA presumably intends it for its own local helper.
   It isn't ours by right; a collision is possible.

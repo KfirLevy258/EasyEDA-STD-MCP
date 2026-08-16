@@ -21,6 +21,9 @@ export interface StdDocument {
   wire?: GidMap<Wire>;
   netflag?: GidMap<NetFlag>;
   junction?: GidMap<Record<string, unknown>>;
+  /** Sheet-level documentation graphics — no electrical meaning. */
+  rect?: GidMap<Record<string, unknown>>;
+  annotation?: GidMap<Record<string, unknown>>;
   /** PCB collections. */
   FOOTPRINT?: GidMap<Record<string, unknown>>;
   TRACK?: GidMap<Record<string, unknown>>;

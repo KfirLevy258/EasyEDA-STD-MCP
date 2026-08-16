@@ -13,7 +13,7 @@ import { getComponentText } from './tools/component.js';
 import { getBomText } from './tools/bom.js';
 import { BackupStore } from './backup.js';
 import { editComponents, restoreBackup, listBackupsText } from './tools/edit-components.js';
-import { connectPins, addComponent } from './tools/build.js';
+import { connectPins, addComponent, drawBoxTool, moveComponentTool } from './tools/build.js';
 import { docKind, collectionCounts, approxBytes } from './model/document.js';
 import type { StdDocument } from './model/types.js';
 
@@ -328,6 +328,67 @@ server.registerTool(
           bridge.state !== 'connected'
             ? 'No EasyEDA editor is attached. Run easyeda_doctor.'
             : await addComponent(bridge, backups, { copyOf, designator, dx, dy, apply }),
+      },
+    ],
+  }),
+);
+
+server.registerTool(
+  'easyeda_draw_box',
+  {
+    title: 'Draw a box and label',
+    description:
+      'Draw a rectangle on the schematic, optionally with a text label, to mark out a ' +
+      'functional block. Give `designators` to wrap a group of components automatically, ' +
+      'or explicit x/y/width/height. Boxes and labels are documentation only and carry no ' +
+      'connectivity. PREVIEWS BY DEFAULT.',
+    inputSchema: {
+      designators: z.array(z.string()).optional().describe('Components to enclose, e.g. ["U2","U3","U4"]'),
+      label: z.string().optional().describe('Text label drawn above the box'),
+      padding: z.number().optional().describe('Space between the components and the box (default 40)'),
+      x: z.number().optional().describe('Explicit box position instead of designators'),
+      y: z.number().optional(),
+      width: z.number().optional(),
+      height: z.number().optional(),
+      apply: z.boolean().optional().describe('false/omitted = preview only. true = draw it.'),
+    },
+  },
+  async ({ designators, label, padding, x, y, width, height, apply }) => ({
+    content: [
+      {
+        type: 'text',
+        text:
+          bridge.state !== 'connected'
+            ? 'No EasyEDA editor is attached. Run easyeda_doctor.'
+            : await drawBoxTool(bridge, backups, { designators, label, padding, x, y, width, height, apply }),
+      },
+    ],
+  }),
+);
+
+server.registerTool(
+  'easyeda_move_component',
+  {
+    title: 'Move a component',
+    description:
+      'Move a component by an offset, dragging any attached wire endpoints with it so its ' +
+      'nets survive. Refuses a move that would land a pin on other geometry. Wires may end ' +
+      'up diagonal rather than neatly re-routed. PREVIEWS BY DEFAULT.',
+    inputSchema: {
+      designator: z.string().describe('Component to move, e.g. "U3"'),
+      dx: z.number().describe('Horizontal offset in EasyEDA internal units'),
+      dy: z.number().describe('Vertical offset (negative is up)'),
+      apply: z.boolean().optional().describe('false/omitted = preview only. true = move it.'),
+    },
+  },
+  async ({ designator, dx, dy, apply }) => ({
+    content: [
+      {
+        type: 'text',
+        text:
+          bridge.state !== 'connected'
+            ? 'No EasyEDA editor is attached. Run easyeda_doctor.'
+            : await moveComponentTool(bridge, backups, { designator, dx, dy, apply }),
       },
     ],
   }),

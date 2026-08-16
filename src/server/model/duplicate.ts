@@ -90,7 +90,7 @@ const Y_FIELDS = new Set(['y', 'y1', 'y2', 'cy']);
  * Recursively shift every coordinate in a symbol subtree.
  * Returns false if something could not be transformed.
  */
-function offsetTree(node: unknown, dx: number, dy: number): boolean {
+export function offsetTree(node: unknown, dx: number, dy: number): boolean {
   if (Array.isArray(node)) {
     for (const item of node) if (!offsetTree(item, dx, dy)) return false;
     return true;

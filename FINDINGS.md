@@ -440,3 +440,36 @@ Run end to end on a real board (4 components, 48 nets), with the board restored 
 The L-route case is the one worth noting: the preview surfaced that the connection would
 *extend* an existing net rather than create a fresh two-pin one, **before** anything was
 written. That is the difference between a tool you can trust with geometry and one you cannot.
+
+## 13. Moving parts, and documentation graphics
+
+### Moving must drag the wires
+
+Shifting a symbol is the same absolute-coordinate transform used for duplication. The half
+that matters is connectivity: the editor rubber-bands wires when you drag a part, but the
+document does not. Move a part through JSON and its pins walk away from the wire endpoints
+sitting on them — **every net it was on breaks silently**, while the schematic still looks
+wired because the wires are still drawn.
+
+So a move drags the endpoints too: any wire vertex coincident with a moved pin shifts by the
+same delta. Nets survive by construction. Wires end up diagonal rather than re-routed, which
+is cosmetic and preferable to pretending otherwise.
+
+Verification for a move is the strictest of the three write kinds: **net membership must be
+identical**, not merely consistent. A test performs the naive move (symbol only, wires left
+behind) and confirms it fails verification.
+
+A move is also refused if it would land a pin on existing geometry, using the same collision
+check as routing.
+
+### Documentation graphics are the safest write
+
+Boxes live in top-level `rect`, labels in top-level `annotation` with `mark: "L"` and
+`type: "comment"`. Neither carries electrical meaning, so verification is absolute: the
+netlist must be **entirely** unchanged and only the expected drawing objects may appear.
+
+Field shapes were copied from what the editor itself emits — a real board labels its
+functional blocks with exactly this rect+annotation pattern — rather than invented.
+
+Verified live: a box drawn around three connectors with the label "connectors" left the
+document at 4 components and 48 nets with identical membership.
