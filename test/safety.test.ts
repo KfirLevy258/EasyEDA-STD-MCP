@@ -92,6 +92,34 @@ test('SAFETY: the write path previews first, snapshots before writing, and verif
     'must roll back when verification fails');
 });
 
+test('SAFETY: every write tool previews first, snapshots before writing, and verifies after', () => {
+  // Applies to the geometry tools too — these CREATE wires and parts, so a silent
+  // mistake produces a schematic that looks right and is wrong.
+  for (const rel of ['src/server/tools/edit-components.ts', 'src/server/tools/build.ts']) {
+    const src = code(resolve(repoRoot, rel));
+    assert.ok(/if\s*\(\s*!req\.apply\s*\)/.test(src), `${rel}: must preview unless apply is set`);
+
+    const snapshotAt = src.indexOf('backups.save');
+    const writeAt = src.indexOf('bridge.applySource');
+    assert.ok(snapshotAt > -1 && writeAt > -1, `${rel}: must snapshot and write`);
+    assert.ok(snapshotAt < writeAt, `${rel}: the restore point must be saved BEFORE the write`);
+
+    assert.ok(/verify|checkIntegrity/.test(src), `${rel}: must verify after writing`);
+    assert.ok(/Rolled back|rolling back/i.test(readFileSync(resolve(repoRoot, rel), 'utf8')),
+      `${rel}: must roll back when verification fails`);
+  }
+});
+
+test('SAFETY: geometry edits are verified by intent, not by "nothing changed"', () => {
+  // checkIntegrity asserts topology never moves — correct for field edits, WRONG for
+  // wiring, where changing topology is the point. Using it here would either reject
+  // every valid wire or (if loosened) stop catching bad ones.
+  const src = code(resolve(repoRoot, 'src/server/tools/build.ts'));
+  assert.ok(!src.includes('checkIntegrity'), 'build.ts must not use the field-edit verifier');
+  assert.ok(src.includes('verifyConnection'), 'connections need intent-specific verification');
+  assert.ok(src.includes('verifyDuplicate'), 'placements need intent-specific verification');
+});
+
 test('SAFETY: no tool edits every component by default', () => {
   const src = code(resolve(repoRoot, 'src/server/tools/edit-components.ts'));
   assert.ok(

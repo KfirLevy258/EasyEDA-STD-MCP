@@ -376,3 +376,50 @@ snapshot to disk  ->  edit in memory  ->  integrity check  ->  write
 
 `createShape` and `updateShape` exist in the method table but remain unused — they would
 need the same gating, and a test asserts they stay unused until that is built.
+
+## 12. Creating geometry (Phase 3)
+
+Adding wires and parts needs **no new API**. `applySource` writes the whole document, so a
+new wire is just another entry in `doc.wire` and a new part another entry in `doc.schlib`.
+`createShape` and `updateShape` remain unused.
+
+Demonstrated on the reference synthetic board: adding one `wire` object with a two-point
+`pointArr` joined two previously-unconnected pins into a net, with 0 orphan pins and 0 name
+conflicts.
+
+### Verification has to change shape
+
+The field-edit verifier (`checkIntegrity`) asserts topology **never** moves. That is exactly
+wrong for wiring, where moving topology is the point — it flags a correct new wire as:
+
+```
+wire count changed: 18 -> 19
+net count changed: 12 -> 11
+```
+
+So geometry edits use intent-specific verification instead (`verifyConnection`,
+`verifyDuplicate`), asserting the requested change happened **and nothing else did**:
+
+- the two pins now share a net
+- that net gained *only* the pins the two were already on — no accidental merge
+- every unrelated named net has the same pin count
+- no pin became orphaned, no net acquired a second name
+
+A test drives a wire deliberately onto the GND rail and confirms it fails verification.
+
+### Routing is refused rather than guessed
+
+A wire connects only where its **vertices** coincide with a pin or another wire's vertex;
+crossing mid-segment does not connect, matching the editor. So the danger is a vertex landing
+somewhere unintended. Routing is therefore limited to a straight run or a single right-angle
+corner, and if both candidate corners are occupied the connection is **refused**. Drawing no
+wire is much better than drawing one that looks right and shorts two nets.
+
+### Duplication must move every coordinate
+
+Std stores all symbol geometry in **absolute** sheet coordinates — pins, annotations,
+outlines and SVG `pathString`s alike. A duplicate has to shift all of them together; miss one
+and the symbol renders in two places, or a pin sits away from its body and joins the wrong
+net. `offsetPathString` handles absolute `M/L/T/H/V/C/S/Q` and leaves relative commands alone.
+**SVG arcs are refused** — `A` mixes radii and flags in with coordinates, and a wrong guess
+corrupts the symbol silently.

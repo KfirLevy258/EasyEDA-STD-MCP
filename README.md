@@ -8,7 +8,7 @@
 [![EasyEDA](https://img.shields.io/badge/EasyEDA-Standard-10b981)](https://easyeda.com)
 [![Node](https://img.shields.io/badge/node-%E2%89%A520-339933?logo=node.js&logoColor=white)](https://nodejs.org)
 [![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178c6?logo=typescript&logoColor=white)](https://www.typescriptlang.org)
-[![Tests](https://img.shields.io/badge/tests-38%20passing-brightgreen)](#testing)
+[![Tests](https://img.shields.io/badge/tests-63%20passing-brightgreen)](#testing)
 [![Writes](https://img.shields.io/badge/writes-guarded-f59e0b)](#writes-are-guarded)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
@@ -25,7 +25,7 @@
 Std is in vendor-declared maintenance mode, so third-party tooling migrated to Pro and no MCP
 server existed for Std. This is one, built from scratch by reverse-engineering the live editor.
 
-**Ten tools:** seven read-only, three for guarded writes. Schematics only.
+**Twelve tools:** seven read-only, five for guarded writes — including drawing wires and placing parts. Schematics only.
 
 ## What it does
 
@@ -90,14 +90,13 @@ restarts. Re-run the script after reloading EasyEDA.
 
 | Tool | What it does |
 |---|---|
-| `easyeda_edit_components` | Set value / designator / footprint / LCSC / manufacturer on one or many **existing** parts. **Previews by default.** |
+| `easyeda_edit_components` | Set value / designator / footprint / LCSC / manufacturer on existing parts |
+| `easyeda_connect_pins` | Draw a wire between two pins, creating or extending a net |
+| `easyeda_add_component` | Place a new part by duplicating one already on the sheet |
 | `easyeda_list_backups` | Restore points, newest first |
 | `easyeda_restore_backup` | Roll the live document back to a restore point |
 
-> [!NOTE]
-> **Writes edit part metadata only.** This cannot add components, draw wires, create nets,
-> or move anything. It changes fields on parts that already exist. See
-> [Limitations](#limitations) for why drawing is a materially harder problem.
+**All write tools preview by default** and write nothing until called again with `apply: true`.
 
 ## Demo
 
@@ -327,19 +326,13 @@ stays small and leaks no geometry. Treat a full dump as a bug.
 ## Limitations
 
 - **Schematics only.** PCB documents are detected and declined rather than guessed at.
-- **Writes edit fields, not the circuit.** There is no way to add a component, draw a wire,
-  create a net, or move a part. `easyeda_edit_components` changes metadata on existing parts.
-
-  This is a deliberate stopping point, not an oversight. EasyEDA Std stores **no netlist** —
-  connectivity is inferred from coordinates meeting exactly (see [How it works](#how-it-works)).
-  So "connect these two pins" is not a data edit, it is a geometry problem: route a polyline
-  whose vertices land precisely on both pin coordinates, without colliding with other nets,
-  and add junctions where it legitimately crosses. Get a coordinate wrong by a fraction and
-  the wire *looks* connected in the editor while the net silently doesn't form — the exact
-  failure mode this project already has to defend against when reading.
-
-  The building blocks exist (`createShape` / `updateShape` are in the API and unused), and the
-  integrity checker would catch a broken net after the fact. What's missing is routing itself.
+- **Routing is deliberately simple.** `easyeda_connect_pins` draws a straight run, or one
+  right-angle corner. It does not route around obstacles: if both corner options land on
+  existing geometry it **refuses** rather than guessing, because a wire through the wrong
+  coordinate silently merges two nets while looking correct on screen.
+- **New parts are copies.** `easyeda_add_component` duplicates a part already on the sheet.
+  Placing from the LCSC library would need `createShape` with a `shortUrl`, which is untested.
+- **Nothing moves.** There is no way to reposition an existing part.
 - No DRC, no fabrication export, no supplier API.
 - Port 3579 is whitelisted because EasyEDA presumably intends it for its own local helper.
   It isn't ours by right; a collision is possible.

@@ -13,6 +13,7 @@ import { getComponentText } from './tools/component.js';
 import { getBomText } from './tools/bom.js';
 import { BackupStore } from './backup.js';
 import { editComponents, restoreBackup, listBackupsText } from './tools/edit-components.js';
+import { connectPins, addComponent } from './tools/build.js';
 import { docKind, collectionCounts, approxBytes } from './model/document.js';
 import type { StdDocument } from './model/types.js';
 
@@ -268,6 +269,65 @@ server.registerTool(
           bridge.state !== 'connected'
             ? 'No EasyEDA editor is attached. Run easyeda_doctor.'
             : await restoreBackup(bridge, backups, id),
+      },
+    ],
+  }),
+);
+
+server.registerTool(
+  'easyeda_connect_pins',
+  {
+    title: 'Connect two pins with a wire',
+    description:
+      'Draw a wire between two pins, creating or extending a net. Routes a straight run, or ' +
+      'a single right-angle corner when the pins do not share a row or column. Refuses ' +
+      'anything it cannot route cleanly rather than guessing. PREVIEWS BY DEFAULT.',
+    inputSchema: {
+      fromDesignator: z.string().describe('First component, e.g. "U1"'),
+      fromPin: z.string().describe('First pin number, e.g. "3"'),
+      toDesignator: z.string().describe('Second component, e.g. "R2"'),
+      toPin: z.string().describe('Second pin number, e.g. "1"'),
+      apply: z.boolean().optional().describe('false/omitted = preview only. true = draw the wire.'),
+    },
+  },
+  async ({ fromDesignator, fromPin, toDesignator, toPin, apply }) => ({
+    content: [
+      {
+        type: 'text',
+        text:
+          bridge.state !== 'connected'
+            ? 'No EasyEDA editor is attached. Run easyeda_doctor.'
+            : await connectPins(bridge, backups, { fromDesignator, fromPin, toDesignator, toPin, apply }),
+      },
+    ],
+  }),
+);
+
+server.registerTool(
+  'easyeda_add_component',
+  {
+    title: 'Add a component',
+    description:
+      'Place a new component by duplicating one already in the schematic, at an offset. The ' +
+      'copy keeps the source part\'s symbol, pins and part numbers, gets the next free ' +
+      'designator, and is placed unconnected — wire it with easyeda_connect_pins. ' +
+      'PREVIEWS BY DEFAULT.',
+    inputSchema: {
+      copyOf: z.string().describe('Designator of an existing component to copy, e.g. "C1"'),
+      designator: z.string().optional().describe('Designator for the new part (default: next free in the series)'),
+      dx: z.number().optional().describe('Horizontal offset in EasyEDA internal units (default 100)'),
+      dy: z.number().optional().describe('Vertical offset in EasyEDA internal units (default 0)'),
+      apply: z.boolean().optional().describe('false/omitted = preview only. true = place it.'),
+    },
+  },
+  async ({ copyOf, designator, dx, dy, apply }) => ({
+    content: [
+      {
+        type: 'text',
+        text:
+          bridge.state !== 'connected'
+            ? 'No EasyEDA editor is attached. Run easyeda_doctor.'
+            : await addComponent(bridge, backups, { copyOf, designator, dx, dy, apply }),
       },
     ],
   }),
