@@ -17,7 +17,28 @@ import { moveComponent, isMoveFailure, verifyMove, componentPosition } from '../
  * that the requested change happened AND that nothing else did.
  */
 
+/**
+ * Optional target-document assertion.
+ *
+ * Writes act on whatever document is ACTIVE (FINDINGS.md §14). When a caller knows which
+ * board it means — because it read the id a moment ago — it can say so, and the write is
+ * refused if the editor has moved on. Without this, safety rests on the wrong board
+ * happening not to contain the same designators.
+ */
+export function documentMismatch(doc: StdDocument, expected?: string): string | undefined {
+  if (!expected) return undefined;
+  const actual = documentId(doc);
+  if (actual && actual !== expected) {
+    return (
+      `REFUSING — wrong document is open.\n  expected ${expected}\n  editor shows  ${actual}\n\n` +
+      'Switch EasyEDA to the intended board and try again.'
+    );
+  }
+  return undefined;
+}
+
 export interface ConnectRequest {
+  expectDocument?: string;
   fromDesignator: string;
   fromPin: string;
   toDesignator: string;
@@ -32,6 +53,8 @@ export async function connectPins(
 ): Promise<string> {
   const doc = (await bridge.getSource()) as StdDocument | null;
   if (!doc) return 'No document is open in the editor.';
+  const mismatch = documentMismatch(doc, req.expectDocument);
+  if (mismatch) return mismatch;
   if (docKind(doc) === 'pcb') return 'The active document is a PCB. Wiring is implemented for schematics only.';
 
   const from = { designator: req.fromDesignator, pinNumber: req.fromPin };
@@ -107,6 +130,7 @@ export async function connectPins(
 }
 
 export interface AddComponentRequest {
+  expectDocument?: string;
   copyOf: string;
   designator?: string;
   dx?: number;
@@ -121,6 +145,8 @@ export async function addComponent(
 ): Promise<string> {
   const doc = (await bridge.getSource()) as StdDocument | null;
   if (!doc) return 'No document is open in the editor.';
+  const mismatch = documentMismatch(doc, req.expectDocument);
+  if (mismatch) return mismatch;
   if (docKind(doc) === 'pcb') {
     return 'The active document is a PCB. Component placement is implemented for schematics only.';
   }
@@ -198,6 +224,7 @@ export async function addComponent(
  * -------------------------------------------------------------------------- */
 
 export interface DrawBoxRequest {
+  expectDocument?: string;
   designators?: string[];
   x?: number;
   y?: number;
@@ -215,6 +242,8 @@ export async function drawBoxTool(
 ): Promise<string> {
   const doc = (await bridge.getSource()) as StdDocument | null;
   if (!doc) return 'No document is open in the editor.';
+  const mismatch = documentMismatch(doc, req.expectDocument);
+  if (mismatch) return mismatch;
   if (docKind(doc) === 'pcb') return 'The active document is a PCB. Drawing is implemented for schematics only.';
 
   let box: Box;
@@ -299,6 +328,7 @@ export async function drawBoxTool(
 }
 
 export interface MoveRequest {
+  expectDocument?: string;
   designator: string;
   dx: number;
   dy: number;
@@ -316,6 +346,8 @@ export async function moveComponentTool(
 ): Promise<string> {
   const doc = (await bridge.getSource()) as StdDocument | null;
   if (!doc) return 'No document is open in the editor.';
+  const mismatch = documentMismatch(doc, req.expectDocument);
+  if (mismatch) return mismatch;
   if (docKind(doc) === 'pcb') return 'The active document is a PCB. Moving is implemented for schematics only.';
 
   const from = componentPosition(doc, req.designator);

@@ -509,3 +509,19 @@ REFUSING TO RESTORE — wrong document is open.
 
 This is the sharpest illustration of §11's point: with no sandbox and no useful return
 value, safety has to come from checking what actually happened, every time.
+
+### Explicit targeting
+
+Refusing a bad restore is necessary but not sufficient — a *move* aimed at the wrong board
+still failed only because that board happened to contain no `U3`/`U4`. So every geometry
+write also accepts `expectDocument`: the caller passes the id it read from
+`easyeda_get_context`, and the write is refused if the editor has moved on.
+
+```
+REFUSING — wrong document is open.
+  expected 8f8cc4de8af34de79b31067aaa6e0fd3
+  editor shows  f4394d8b78c142899bbc794f59c7c430
+```
+
+`easyeda_get_context` now reports the document id so a caller can pin a whole sequence of
+edits to one board.

@@ -99,6 +99,8 @@ restarts. Re-run the script after reloading EasyEDA.
 | `easyeda_restore_backup` | Roll the live document back to a restore point |
 
 **All write tools preview by default** and write nothing until called again with `apply: true`.
+They also accept `expectDocument` — pass the id from `easyeda_get_context` to pin a sequence
+of edits to one board, since writes otherwise target whatever tab is in front.
 Every write snapshots first, verifies by reading back, and rolls back if anything unintended
 moved. Verified end to end against a live editor — see [FINDINGS.md §12](FINDINGS.md).
 

@@ -14,7 +14,7 @@ import { getBomText } from './tools/bom.js';
 import { BackupStore } from './backup.js';
 import { editComponents, restoreBackup, listBackupsText } from './tools/edit-components.js';
 import { connectPins, addComponent, drawBoxTool, moveComponentTool } from './tools/build.js';
-import { docKind, collectionCounts, approxBytes } from './model/document.js';
+import { docKind, collectionCounts, approxBytes, documentId } from './model/document.js';
 import type { StdDocument } from './model/types.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -86,6 +86,7 @@ server.registerTool(
           const counts = collectionCounts(doc).filter((c) => c.count > 0);
           const lines = [
             `Document type: ${docKind(doc)}`,
+            `Document id: ${documentId(doc) ?? '(unknown)'}`,
             `Approximate size: ${(bytes / 1024).toFixed(0)} KB`,
             '',
             'Collections:',
@@ -288,16 +289,17 @@ server.registerTool(
       toDesignator: z.string().describe('Second component, e.g. "R2"'),
       toPin: z.string().describe('Second pin number, e.g. "1"'),
       apply: z.boolean().optional().describe('false/omitted = preview only. true = draw the wire.'),
+      expectDocument: z.string().optional().describe('Document id from easyeda_get_context; refuses if the editor has switched boards'),
     },
   },
-  async ({ fromDesignator, fromPin, toDesignator, toPin, apply }) => ({
+  async ({ fromDesignator, fromPin, toDesignator, toPin, apply, expectDocument }) => ({
     content: [
       {
         type: 'text',
         text:
           bridge.state !== 'connected'
             ? 'No EasyEDA editor is attached. Run easyeda_doctor.'
-            : await connectPins(bridge, backups, { fromDesignator, fromPin, toDesignator, toPin, apply }),
+            : await connectPins(bridge, backups, { fromDesignator, fromPin, toDesignator, toPin, apply, expectDocument }),
       },
     ],
   }),
@@ -318,16 +320,17 @@ server.registerTool(
       dx: z.number().optional().describe('Horizontal offset in EasyEDA internal units (default 100)'),
       dy: z.number().optional().describe('Vertical offset in EasyEDA internal units (default 0)'),
       apply: z.boolean().optional().describe('false/omitted = preview only. true = place it.'),
+      expectDocument: z.string().optional().describe('Document id from easyeda_get_context; refuses if the editor has switched boards'),
     },
   },
-  async ({ copyOf, designator, dx, dy, apply }) => ({
+  async ({ copyOf, designator, dx, dy, apply, expectDocument }) => ({
     content: [
       {
         type: 'text',
         text:
           bridge.state !== 'connected'
             ? 'No EasyEDA editor is attached. Run easyeda_doctor.'
-            : await addComponent(bridge, backups, { copyOf, designator, dx, dy, apply }),
+            : await addComponent(bridge, backups, { copyOf, designator, dx, dy, apply, expectDocument }),
       },
     ],
   }),
@@ -351,16 +354,17 @@ server.registerTool(
       width: z.number().optional(),
       height: z.number().optional(),
       apply: z.boolean().optional().describe('false/omitted = preview only. true = draw it.'),
+      expectDocument: z.string().optional().describe('Document id from easyeda_get_context; refuses if the editor has switched boards'),
     },
   },
-  async ({ designators, label, padding, x, y, width, height, apply }) => ({
+  async ({ designators, label, padding, x, y, width, height, apply, expectDocument }) => ({
     content: [
       {
         type: 'text',
         text:
           bridge.state !== 'connected'
             ? 'No EasyEDA editor is attached. Run easyeda_doctor.'
-            : await drawBoxTool(bridge, backups, { designators, label, padding, x, y, width, height, apply }),
+            : await drawBoxTool(bridge, backups, { designators, label, padding, x, y, width, height, apply, expectDocument }),
       },
     ],
   }),
@@ -379,16 +383,17 @@ server.registerTool(
       dx: z.number().describe('Horizontal offset in EasyEDA internal units'),
       dy: z.number().describe('Vertical offset (negative is up)'),
       apply: z.boolean().optional().describe('false/omitted = preview only. true = move it.'),
+      expectDocument: z.string().optional().describe('Document id from easyeda_get_context; refuses if the editor has switched boards'),
     },
   },
-  async ({ designator, dx, dy, apply }) => ({
+  async ({ designator, dx, dy, apply, expectDocument }) => ({
     content: [
       {
         type: 'text',
         text:
           bridge.state !== 'connected'
             ? 'No EasyEDA editor is attached. Run easyeda_doctor.'
-            : await moveComponentTool(bridge, backups, { designator, dx, dy, apply }),
+            : await moveComponentTool(bridge, backups, { designator, dx, dy, apply, expectDocument }),
       },
     ],
   }),
